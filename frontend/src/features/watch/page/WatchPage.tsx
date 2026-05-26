@@ -36,12 +36,23 @@ type WatchPageProps = {
 };
 
 export function WatchPage({ config }: WatchPageProps) {
+  const { rooms } = useRooms(config);
+  const queryRoomId = new URLSearchParams(location.search).get("room");
+  const selectedRoomId = queryRoomId ?? rooms[0]?.id ?? "";
+
+  if (queryRoomId === null && rooms.length > 0 && selectedRoomId !== "") {
+    history.replaceState(
+      null,
+      "",
+      `/watch?room=${encodeURIComponent(selectedRoomId)}`,
+    );
+  }
+
   const stageRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [body, setBody] = useState("");
   const [isPaused, setIsPaused] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState("");
   const [selectedDirection, setSelectedDirection] =
     useState<CommentDirection>("rightToLeft");
   const [selectedSize, setSelectedSize] = useState<CommentFontSize>("medium");
@@ -51,7 +62,6 @@ export function WatchPage({ config }: WatchPageProps) {
   const [ownerDisplayNamesByRoomId, setOwnerDisplayNamesByRoomId] = useState<
     Record<string, string>
   >({});
-  const { rooms } = useRooms(config);
   const { commentsLayerRef, renderComment } = useCommentRenderer();
   const {
     comments,
@@ -133,28 +143,13 @@ export function WatchPage({ config }: WatchPageProps) {
     autoplayNoticeDevice(navigator),
   );
 
-  useEffect(() => {
-    if (selectedRoomId !== "") {
-      return;
-    }
-    const queryRoomId = new URLSearchParams(location.search).get("room");
-    if (queryRoomId !== null) {
-      setSelectedRoomId(queryRoomId);
-      return;
-    }
-    if (rooms.length === 0) {
-      return;
-    }
-    const initialRoomId = queryRoomId ?? rooms[0]?.id ?? "";
-    setSelectedRoomId(initialRoomId);
-    if (initialRoomId !== "") {
-      history.replaceState(
-        null,
-        "",
-        `/watch?room=${encodeURIComponent(initialRoomId)}`,
-      );
-    }
-  }, [rooms, selectedRoomId]);
+  if (selectedRoomId === "" || (stats === null && !roomNotFound)) {
+    return null;
+  }
+
+  if (roomNotFound) {
+    return <NotFoundPage />;
+  }
 
   const updatePlayerState = (): void => {
     const video = videoRef.current;
@@ -213,10 +208,6 @@ export function WatchPage({ config }: WatchPageProps) {
     }
     updatePlayerState();
   };
-
-  if (roomNotFound) {
-    return <NotFoundPage />;
-  }
 
   return (
     <AppShell>
